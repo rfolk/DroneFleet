@@ -22,6 +22,8 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
@@ -40,10 +42,12 @@ public class MainActivity extends FragmentActivity implements
     public PolylineOptions flightPath;
     public Polyline renderPath;
     private LocationClient mLocationClient;
-
+    private final MainActivity handle = this;
+    public boolean running = false;
     // Define a request code to send to Google Play services This code is returned in Activity.onActivityResult
     private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
 
+    public ArdroneAPI drone1;
 
 
     @Override
@@ -55,6 +59,9 @@ public class MainActivity extends FragmentActivity implements
         mLocationClient = new LocationClient( this, this, this );
 
         initializeMap();
+
+        // Drone 1
+        drone1 = new ArdroneAPI("192.168.1.1");
 
         map.setMyLocationEnabled( true );
     }
@@ -70,8 +77,9 @@ public class MainActivity extends FragmentActivity implements
         if ( isGooglePlayServicesAvailable() )
         {
             mLocationClient.connect();
-        }
 
+        }
+        drone1.connect ( );
     }
 
     /**
@@ -82,6 +90,7 @@ public class MainActivity extends FragmentActivity implements
     {
         // Disconnecting the client invalidates it.
         mLocationClient.disconnect();
+        drone1.close ( );
         super.onStop();
     }
 
@@ -175,6 +184,8 @@ public class MainActivity extends FragmentActivity implements
 
     private void initializeMap()
     {
+
+
         if ( map == null )
         {
             mapFragment = ( ( MySupportMapFragment ) getSupportFragmentManager().findFragmentById( R.id.google_map ) );
@@ -271,6 +282,26 @@ public class MainActivity extends FragmentActivity implements
                 map.getUiSettings().setAllGesturesEnabled(true);
             }
         });
+
+        new Thread( new Runnable ( ) {
+            public void run ( ) {
+                try {
+                    LatLng latLng = new LatLng(0,0);
+                    Marker marker = handle.map.addMarker(new MarkerOptions().position(latLng)
+                            .title("DRONE ====>(X)<====="));
+
+                    while ( handle.running ) {
+
+                        LatLng latlng = drone1.getGPS ( );
+                        marker.setPosition ( latlng );
+                        Thread.sleep(1000);
+                    }
+                } catch ( InterruptedException e ) {
+                    System.err.println ( "ERROR" + e );
+                }
+            }
+
+        }).start();
     }
 
 
