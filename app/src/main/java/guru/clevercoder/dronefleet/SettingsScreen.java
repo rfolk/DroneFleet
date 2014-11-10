@@ -21,8 +21,8 @@ public class SettingsScreen extends Activity implements View.OnClickListener
     {
         super.onCreate( savedInstanceState );
         setContentView( R.layout.settings_screen );
-        numberSimDrones = 0;
-        ipSim = "";
+        numberSimDrones = 2;
+        ipSim = "192.168.43.42";
         saveSettings = ( Button ) findViewById( R.id.btn_saveSettings );
         saveSettings.setOnClickListener( this );
     }
@@ -41,6 +41,16 @@ public class SettingsScreen extends Activity implements View.OnClickListener
                 finish();
             break;
         }
+    }
+
+    public int getNumberSimulatedDrones ()
+    {
+        return numberSimDrones;
+    }
+
+    public String getSimulatorIP ()
+    {
+        return ipSim;
     }
 
 }
