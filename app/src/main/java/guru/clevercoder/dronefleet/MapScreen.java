@@ -11,6 +11,8 @@ import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -24,13 +26,18 @@ import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.Polygon;
+import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import java.util.ArrayList;
 
-public class MainActivity extends FragmentActivity implements
+
+public class MapScreen extends FragmentActivity implements
         GooglePlayServicesClient.ConnectionCallbacks,
-        GooglePlayServicesClient.OnConnectionFailedListener
+        GooglePlayServicesClient.OnConnectionFailedListener,
+        View.OnClickListener
 {
 
     private GoogleMap map;
@@ -39,31 +46,53 @@ public class MainActivity extends FragmentActivity implements
     Projection projection;
     public double latitude;
     public double longitude;
-    public PolylineOptions flightPath;
-    public Polyline renderPath;
+    public PolylineOptions flightPathLine;
+    public Polyline renderPathLine;
+    public PolygonOptions flightPathShape;
+    public Polygon renderPathShape;
     private LocationClient mLocationClient;
-    private final MainActivity handle = this;
+    private final MapScreen handle = this;
     public boolean running = false;
     // Define a request code to send to Google Play services This code is returned in Activity.onActivityResult
     private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
 
     public ArdroneAPI drone1;
+    public Marker marker;
+
+    private boolean mapIsDrawable;
+    private boolean drawingLine;
+    private boolean drawingShape;
+    private Button drawLine;
+    private Button drawShape;
+    private Button go;
+
+    private ArrayList<LatLng> coordinates;
 
 
     @Override
     protected void onCreate( Bundle savedInstanceState )
     {
         super.onCreate( savedInstanceState );
-        setContentView( R.layout.activity_main );
+        setContentView( R.layout.map_screen);
 
         mLocationClient = new LocationClient( this, this, this );
 
         initializeMap();
 
         // Drone 1
-        drone1 = new ArdroneAPI("192.168.1.1");
+        //drone1 = new ArdroneAPI("192.168.1.1");
 
         map.setMyLocationEnabled( true );
+
+        mapIsDrawable = false;
+        drawingLine = false;
+        drawingShape = false;
+        drawLine = ( Button ) findViewById( R.id.btn_drawLine);
+        drawLine.setOnClickListener( this );
+        drawShape = ( Button ) findViewById( R.id.btn_drawShape );
+        drawShape.setOnClickListener( this );
+        go = ( Button ) findViewById( R.id.btn_go );
+        go.setOnClickListener( this );
     }
 
     /**
@@ -79,7 +108,12 @@ public class MainActivity extends FragmentActivity implements
             mLocationClient.connect();
 
         }
-        drone1.connect ( );
+        /*new Thread( new Runnable() {
+            @Override
+            public void run() {
+                handle.drone1.connect ();
+            }
+        }).start();*/
     }
 
     /**
@@ -90,7 +124,7 @@ public class MainActivity extends FragmentActivity implements
     {
         // Disconnecting the client invalidates it.
         mLocationClient.disconnect();
-        drone1.close ( );
+        //drone1.close ( );
         super.onStop();
     }
 
@@ -180,6 +214,53 @@ public class MainActivity extends FragmentActivity implements
     }
 
 
+    /**
+      * Track the click of buttons
+      *
+      * @param view
+      */
+    @Override
+    public void onClick ( View view )
+    {
+        switch ( view.getId() )
+        {
+            case R.id.btn_drawLine:
+                if ( mapIsDrawable == false )
+                {
+                    mapIsDrawable = true;
+                    drawingLine = true;
+                    map.getUiSettings().setAllGesturesEnabled(false);
+                }
+                else
+                {
+                    mapIsDrawable = false;
+                    drawingLine = false;
+                    map.getUiSettings().setAllGesturesEnabled(true);
+                }
+            break;
+            case R.id.btn_drawShape:
+                if ( mapIsDrawable == false )
+                {
+                    mapIsDrawable = true;
+                    drawingShape = true;
+                    map.getUiSettings().setAllGesturesEnabled(false);
+                }
+                else
+                {
+                    mapIsDrawable = false;
+                    drawingShape = false;
+                    map.getUiSettings().setAllGesturesEnabled(true);
+                }
+                break;
+            case R.id.btn_go:
+                Intent intent = new Intent( this, GoScreen.class );
+                startActivity( intent );
+                finish();
+            break;
+        }
+
+    }
+
 
 
     private void initializeMap()
@@ -202,31 +283,41 @@ public class MainActivity extends FragmentActivity implements
 
             @Override
             public void OnDrag ( MotionEvent motionEvent ) {
-                switch (motionEvent.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        onDragStart ( motionEvent );
-                        break;
+                if ( handle.mapIsDrawable )
+                {
+                    switch (motionEvent.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                            onDragStart(motionEvent);
+                            break;
 
-                    case MotionEvent.ACTION_UP:
-                        onDragStop ( );
-                        break;
+                        case MotionEvent.ACTION_UP:
+                            onDragStop();
+                            break;
 
-                    case MotionEvent.ACTION_MOVE:
-                        onDragMove ( motionEvent );
-                        break;
+                        case MotionEvent.ACTION_MOVE:
+                            onDragMove(motionEvent);
+                            break;
+                    }
                 }
             }
 
             public void onDragStart ( MotionEvent motionEvent ) {
-                map.getUiSettings().setAllGesturesEnabled(false);
-                if ( renderPath != null ) {
-                    renderPath.remove();
-                    flightPath = null;
-
-
+                if ( renderPathLine != null )
+                {
+                    renderPathLine.remove();
+                    flightPathLine = null;
+                    coordinates = null;
+                }
+                if ( renderPathShape != null )
+                {
+                    renderPathShape.remove();
+                    flightPathShape = null;
+                    coordinates = null;
                 }
 
-                flightPath = new PolylineOptions();
+                flightPathLine = new PolylineOptions();
+                flightPathShape = new PolygonOptions();
+                coordinates = new ArrayList<LatLng>();
 
                 float x = motionEvent.getX();
                 float y = motionEvent.getY();
@@ -240,7 +331,15 @@ public class MainActivity extends FragmentActivity implements
                 projection = map.getProjection();
                 Point x_y_points = new Point(x_co, y_co);
                 LatLng latLng = map.getProjection().fromScreenLocation(x_y_points);
-                flightPath.add(latLng);
+                if ( drawingLine )
+                {
+                    flightPathLine.add( latLng );
+                }
+                else if ( drawingShape )
+                {
+                    flightPathShape.add( latLng );
+                }
+                coordinates.add(latLng);
 
                 latitude = latLng.latitude;
                 longitude = latLng.longitude;
@@ -265,35 +364,55 @@ public class MainActivity extends FragmentActivity implements
                 projection = map.getProjection();
                 Point x_y_points = new Point(x_co, y_co);
                 LatLng latLng = map.getProjection().fromScreenLocation(x_y_points);
-                flightPath.add(latLng);
+                if ( drawingLine )
+                {
+                    flightPathLine.add( latLng );
+                }
+                else if ( drawingShape )
+                {
+                    flightPathShape.add( latLng );
+                }
+                coordinates.add(latLng);
 
             }
 
             public void onDragStop ( ) {
                 // Create polyline options with existing LatLng ArrayList
-                flightPath
-                        .width(5)
-                        .color(Color.RED)
-                        .visible(true)
-                        .zIndex(1000);
+                if ( drawingLine )
+                {
+                    flightPathLine
+                            .width(5)
+                            .color(Color.RED)
+                            .visible(true)
+                            .zIndex(1000);
+                    renderPathLine = map.addPolyline(flightPathLine);
+                }
+                else if ( drawingShape )
+                {
+                    flightPathShape
+                            .strokeWidth(5)
+                            .strokeColor(Color.RED)
+                            .visible(true)
+                            .zIndex(1000);
+                    renderPathShape = map.addPolygon(flightPathShape);
+                }
 
                 // Adding multiple points in map using polyline and arraylist
-                renderPath = map.addPolyline(flightPath);
-                map.getUiSettings().setAllGesturesEnabled(true);
+
             }
         });
 
+        LatLng latLng = new LatLng(0,0);
+        marker = handle.map.addMarker(new MarkerOptions().position(latLng)
+                .title("DRONE =====>(X)<====="));
         new Thread( new Runnable ( ) {
             public void run ( ) {
                 try {
-                    LatLng latLng = new LatLng(0,0);
-                    Marker marker = handle.map.addMarker(new MarkerOptions().position(latLng)
-                            .title("DRONE ====>(X)<====="));
 
                     while ( handle.running ) {
 
                         LatLng latlng = drone1.getGPS ( );
-                        marker.setPosition ( latlng );
+                        handle.marker.setPosition ( latlng );
                         Thread.sleep(1000);
                     }
                 } catch ( InterruptedException e ) {
@@ -308,7 +427,7 @@ public class MainActivity extends FragmentActivity implements
     private boolean isGooglePlayServicesAvailable()
     {
         // Check that Google Play services is available
-        int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable( this );
+        int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
         // If Google Play services is available
         if ( ConnectionResult.SUCCESS == resultCode )
         {
