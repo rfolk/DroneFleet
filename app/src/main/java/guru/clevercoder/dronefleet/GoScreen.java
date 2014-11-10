@@ -33,11 +33,13 @@ public class GoScreen extends Activity implements View.OnClickListener
         {
             case R.id.btn_real:
                 intent = new Intent( this, MapScreen.class );
+                intent.putExtra("buttonPressed", "realDrones");
                 startActivity( intent );
                 finish();
             break;
             case R.id.btn_simulator:
                 intent = new Intent( this, MapScreen.class );
+                intent.putExtra("buttonPressed", "simulator");
                 startActivity( intent );
                 finish();
             break;

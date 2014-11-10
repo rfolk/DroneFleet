@@ -65,6 +65,8 @@ public class MapScreen extends FragmentActivity implements
     private Button drawLine;
     private Button drawShape;
     private Button go;
+    private Bundle extras;
+    private String resultingFrom;
 
     private ArrayList<LatLng> coordinates;
 
@@ -74,6 +76,12 @@ public class MapScreen extends FragmentActivity implements
     {
         super.onCreate( savedInstanceState );
         setContentView( R.layout.map_screen);
+
+        extras = getIntent().getExtras();
+        if ( extras != null )
+        {
+            resultingFrom = extras.getString("buttonPressed");
+        }
 
         mLocationClient = new LocationClient( this, this, this );
 
@@ -395,6 +403,11 @@ public class MapScreen extends FragmentActivity implements
                             .visible(true)
                             .zIndex(1000);
                     renderPathShape = map.addPolygon(flightPathShape);
+                }
+                Log.i("Array for Points Size:", " " + String.valueOf(coordinates.size()));
+                if ( extras != null )
+                {
+                    Log.i("Came from:", resultingFrom);
                 }
 
                 // Adding multiple points in map using polyline and arraylist
