@@ -31,6 +31,7 @@ import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 
 import java.util.ArrayList;
 
@@ -155,11 +156,13 @@ public class MapScreen extends FragmentActivity implements
         // Initialize a drone object per drone
         drones.add( new ArdroneAPI("192.168.43.4", this ) );
         droneMarkers.add(handle.map.addMarker(new MarkerOptions().position(new LatLng(0, 0))
-                .title(drones.get(0).toString())));
+                .title(drones.get(0).toString())
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.dronemarker))));
 
         drones.add( new ArdroneAPI("192.168.43.5", this ) );
         droneMarkers.add(handle.map.addMarker(new MarkerOptions().position(new LatLng(0,0))
-                .title(drones.get(1).toString())));
+                .title(drones.get(1).toString())
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.dronemarker))));
 
         final ArrayList<ArdroneAPI> dronesStatic = drones;
         // Connect all drones
