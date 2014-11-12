@@ -2,8 +2,10 @@ package guru.clevercoder.dronefleet;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.IntentSender;
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.location.Location;
@@ -14,7 +16,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
-
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.GooglePlayServicesUtil;
@@ -37,7 +38,8 @@ import java.util.ArrayList;
 public class MapScreen extends FragmentActivity implements
         GooglePlayServicesClient.ConnectionCallbacks,
         GooglePlayServicesClient.OnConnectionFailedListener,
-        View.OnClickListener
+        View.OnClickListener,
+        ArdroneAPICallbacks
 {
 
     private GoogleMap map;
@@ -56,8 +58,8 @@ public class MapScreen extends FragmentActivity implements
     // Define a request code to send to Google Play services This code is returned in Activity.onActivityResult
     private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
 
-    public ArdroneAPI drone1;
-    public Marker marker;
+    public ArrayList<Marker> droneMarkers;
+    public ArrayList<ArdroneAPI> drones;
 
     private boolean mapIsDrawable;
     private boolean drawingLine;
@@ -70,25 +72,18 @@ public class MapScreen extends FragmentActivity implements
 
     private ArrayList<LatLng> coordinates;
 
+    private int connectedDrones = 0;
+    private int flightPlansReady = 0;
 
     @Override
     protected void onCreate( Bundle savedInstanceState )
     {
         super.onCreate( savedInstanceState );
-        setContentView( R.layout.map_screen);
-
-        extras = getIntent().getExtras();
-        if ( extras != null )
-        {
-            resultingFrom = extras.getString("buttonPressed");
-        }
+        setContentView( R.layout.map_screen );
 
         mLocationClient = new LocationClient( this, this, this );
 
         initializeMap();
-
-        // Drone 1
-        //drone1 = new ArdroneAPI("192.168.1.1");
 
         map.setMyLocationEnabled( true );
 
@@ -116,12 +111,6 @@ public class MapScreen extends FragmentActivity implements
             mLocationClient.connect();
 
         }
-        /*new Thread( new Runnable() {
-            @Override
-            public void run() {
-                handle.drone1.connect ();
-            }
-        }).start();*/
     }
 
     /**
@@ -156,6 +145,39 @@ public class MapScreen extends FragmentActivity implements
                 }
 
         }
+    }
+
+    // Initialize real drones and prepare them with provided path
+    private void initReal ( ) {
+        drones = new ArrayList<ArdroneAPI>();
+        droneMarkers = new ArrayList<Marker>();
+
+        // Initialize a drone object per drone
+        drones.add( new ArdroneAPI("192.168.43.4", this ) );
+        droneMarkers.add(handle.map.addMarker(new MarkerOptions().position(new LatLng(0, 0))
+                .title(drones.get(0).toString())));
+
+        drones.add( new ArdroneAPI("192.168.43.5", this ) );
+        droneMarkers.add(handle.map.addMarker(new MarkerOptions().position(new LatLng(0,0))
+                .title(drones.get(1).toString())));
+
+        final ArrayList<ArdroneAPI> dronesStatic = drones;
+        // Connect all drones
+        new Thread( new Runnable() {
+            public void run ( ) {
+                for( int i = 0 ; i < dronesStatic.size() ; i ++ ) {
+                    dronesStatic.get(i).connect();
+                }
+            }
+        }).start();
+
+    }
+
+    private void initSim ( ) {
+       // Init # of drones specified.
+
+       // Wait for ID's associated with drone communication
+
     }
 
     /**
@@ -261,15 +283,32 @@ public class MapScreen extends FragmentActivity implements
                 }
                 break;
             case R.id.btn_go:
-                Intent intent = new Intent( this, GoScreen.class );
-                startActivity( intent );
-                finish();
+                if ( mapIsDrawable == false ) {
+                    CharSequence colors[] = new CharSequence[] {"Real Drones", "Simulator"};
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Environment");
+                    builder.setItems(colors, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            // the user clicked on colors[which]
+                            switch ( which ) {
+                                case 1:
+                                    initSim();
+                                break;
+                                case 0:
+                                    initReal();
+                                break;
+                            }
+                        }
+                    });
+                    builder.show();
+
+                }
             break;
         }
 
     }
-
-
 
     private void initializeMap()
     {
@@ -293,6 +332,7 @@ public class MapScreen extends FragmentActivity implements
             public void OnDrag ( MotionEvent motionEvent ) {
                 if ( handle.mapIsDrawable )
                 {
+                    Log.i("Drag", "STARTED");
                     switch (motionEvent.getAction()) {
                         case MotionEvent.ACTION_DOWN:
                             onDragStart(motionEvent);
@@ -414,26 +454,6 @@ public class MapScreen extends FragmentActivity implements
 
             }
         });
-
-        LatLng latLng = new LatLng(0,0);
-        marker = handle.map.addMarker(new MarkerOptions().position(latLng)
-                .title("DRONE =====>(X)<====="));
-        new Thread( new Runnable ( ) {
-            public void run ( ) {
-                try {
-
-                    while ( handle.running ) {
-
-                        LatLng latlng = drone1.getGPS ( );
-                        handle.marker.setPosition ( latlng );
-                        Thread.sleep(1000);
-                    }
-                } catch ( InterruptedException e ) {
-                    System.err.println ( "ERROR" + e );
-                }
-            }
-
-        }).start();
     }
 
 
@@ -465,4 +485,119 @@ public class MapScreen extends FragmentActivity implements
         }
     }
 
+    public void coordinateFlight ( ) {
+        Auction coordAuction = new Auction ( );
+        flightPlansReady = 0;
+        coordinates = new ArrayList<LatLng>();
+
+
+        /* Large Field
+        coordinates.add(new LatLng(32.279401,-106.746412));
+        coordinates.add(new LatLng(32.279412,-106.746308));
+        coordinates.add(new LatLng(32.27938,-106.746246));
+        coordinates.add(new LatLng(32.279335,-106.746224));
+        coordinates.add(new LatLng(32.279283,-106.746216));
+        coordinates.add(new LatLng(32.279228,-106.746219));
+        coordinates.add(new LatLng(32.279183,-106.746251));
+        coordinates.add(new LatLng(32.279165,-106.746326));
+        coordinates.add(new LatLng(32.279181,-106.746399));
+        coordinates.add(new LatLng(32.279226,-106.746493));
+        coordinates.add(new LatLng(32.279285,-106.746587));
+        coordinates.add(new LatLng(32.279355,-106.74667));
+        coordinates.add(new LatLng(32.279392,-106.746581));
+        coordinates.add(new LatLng(32.279385,-106.746506));
+        */
+
+        /* Small Field Next to CS Dept. */
+        coordinates.add(new LatLng(32.280979,-106.752577));
+        coordinates.add(new LatLng(32.280978,-106.752541));
+        coordinates.add(new LatLng(32.280869,-106.752542));
+        coordinates.add(new LatLng(32.280859,-106.752587));
+        coordinates.add(new LatLng(32.280876,-106.752635));
+        coordinates.add(new LatLng(32.280916,-106.752668));
+        coordinates.add(new LatLng(32.28095,-106.752659));
+        coordinates.add(new LatLng(32.280971,-106.75262));
+
+        ArrayList< ArrayList<LatLng> > flightPlans = coordAuction.auctionPoints ( drones , coordinates );
+
+        for ( int i = 0 ; i < drones.size ( ) ; ++ i ) {
+            drones.get(i).buildFlightPlan(flightPlans.get(i));
+        }
+    }
+
+    // All flight plans are now set and ready to start
+    public void startFlightPlan ( ) {
+        for ( int i = 0 ; i < drones.size ( ) ; ++ i ) {
+            drones.get(i).startFlightPlan();
+        }
+    }
+
+    public void onDroneConnect(  ArdroneAPI drone ) {
+        Log.i( "DroneMessage" , "Connnection Opened" );
+        connectedDrones ++;
+        // Wait for all drones to connect
+        if ( connectedDrones == drones.size ( ) ) {
+            coordinateFlight();
+        }
+    }
+
+    public void onDroneDisconnect ( ArdroneAPI drone ) {
+        Log.i( "DroneMessage" , "Connection Closed" );
+    }
+
+    public void onFlightPlanReady ( ArdroneAPI drone ) {
+        Log.i( "DroneMessage" , "FlightPlan ready to begin" );
+        flightPlansReady ++;
+
+        // Wait for all drones to be ready with their FlightPlan
+        if ( flightPlansReady == drones.size() ) {
+            startFlightPlan();
+        }
+    }
+
+    public void onFlightPlanComplete ( ArdroneAPI drone ) {
+        // Completed
+        Log.i( "DroneMessage" , "Finished Flight Plan" );
+    }
+
+    public void onFlightPlanError ( ArdroneAPI drone , String why ) {
+
+    }
+
+    public void onMissionEvent ( ArdroneAPI drone , MISSION_EVENTS event ) {
+        switch ( event ) {
+            case LANDING:
+                // Finished Plan
+                Log.i( "DroneMessage" , "Landing" );
+            break;
+            case WAY_POINT_REACHED:
+                // Reached a Way Point
+                Log.i( "DroneMessage" , "Reached a way point" );
+            break;
+        }
+    }
+
+    public void updateGPSMarkers ( ) {
+        try {
+            for (int i = 0; i < drones.size(); ++i) {
+                droneMarkers.get(i).setPosition(drones.get(i).getCurrentCoord());
+            }
+        } finally {
+            Log.i ("DroneMessage" , "Error retrieving GPS" );
+        }
+    }
+
+    public void onDroneGPS ( ArdroneAPI drone ) {
+        try {
+            runOnUiThread(new Runnable ( ) {
+                public void run ( ) {
+                    handle.updateGPSMarkers();
+                }
+            });
+        } catch ( Exception e ) {
+            Log.i ( "DroneMessage" , "ERROR in GPS::"+e );
+        } finally {
+            Log.i ( "DroneMessage" , "Error in GPS" );
+        }
+     }
 }

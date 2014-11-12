@@ -1,7 +1,7 @@
 package guru.clevercoder.dronefleet;
 
 import java.nio.ByteBuffer;
-
+import java.nio.ByteOrder;
 public class MavLink {
 
     private static final int PROTOCOL_VERSION = 3;
@@ -684,15 +684,16 @@ public class MavLink {
 
         protected Message(byte[] bytes) {
             ByteBuffer buffer = ByteBuffer.wrap(bytes);
+
             short startSign = (short)(buffer.get() & 0xFF);
 
             if(startSign != PACKET_START_SIGN) {
                 throw new IllegalStateException("Unsupported protocol. Excepted: " +
                         PACKET_START_SIGN + " got: " + startSign);
             }
-
-            buffer.get(); // payload length, ignore
+            buffer.get();
             this.sequenceIndex = (short)(buffer.get() & 0xFF);
+            System.out.println("SEQ: " + this.sequenceIndex);
             this.systemId = (short)(buffer.get() & 0xFF);
             this.componentId = (short)(buffer.get() & 0xFF);
 
@@ -704,6 +705,23 @@ public class MavLink {
 
             decodePayload(buffer);
             // TODO: CRC
+        }
+
+        public static int flipEndian(int i) {
+            return((i&0xff)<<24)+((i&0xff00)<<8)+((i&0xff0000)>>8)+((i>>24)&0xff);
+        }
+
+        public static short flipEndian(short i) {
+            return (short)(((i&0xff)<<8)+((i&0xff00)>>8));
+        }
+
+        public static float GetFloat32(int dat) {
+            return Float.intBitsToFloat(dat);
+        }
+
+        public static int PackFloat32(float dat){
+            return Float.floatToIntBits(dat);
+
         }
 
         protected Message(short systemId, short componentId) {
@@ -2556,7 +2574,7 @@ public class MavLink {
 
         protected ByteBuffer decodePayload(ByteBuffer buffer) {
 
-            custom_mode = buffer.getInt() & 0xffffffff; // uint32_t
+            custom_mode = (int)(flipEndian(buffer.getInt()) & 0xffffffff); // uint32_t
             type = (int)buffer.get() & 0xff; // uint8_t
             autopilot = (int)buffer.get() & 0xff; // uint8_t
             base_mode = (int)buffer.get() & 0xff; // uint8_t
@@ -2567,7 +2585,7 @@ public class MavLink {
 
         protected ByteBuffer encodePayload(ByteBuffer buffer) {
 
-            buffer.putInt((int)(custom_mode & 0xffffffff)); // uint32_t
+            buffer.putInt((int)(flipEndian((int)custom_mode) & 0xffffffff)); // uint32_t
             buffer.put((byte)(type & 0xff)); // uint8_t
             buffer.put((byte)(autopilot & 0xff)); // uint8_t
             buffer.put((byte)(base_mode & 0xff)); // uint8_t
@@ -2662,9 +2680,7 @@ public class MavLink {
             target_system = (int)buffer.get() & 0xff; // uint8_t
             control_request = (int)buffer.get() & 0xff; // uint8_t
             version = (int)buffer.get() & 0xff; // uint8_t
-            for(int c=0; c<25; ++c) {
-                passkey [c] =  (char)buffer.get(); // char[25]
-            }
+
 
             return buffer;
         }
@@ -2674,9 +2690,6 @@ public class MavLink {
             buffer.put((byte)(target_system & 0xff)); // uint8_t
             buffer.put((byte)(control_request & 0xff)); // uint8_t
             buffer.put((byte)(version & 0xff)); // uint8_t
-            //for(int c=0; c<25; ++c) {
-            //	buffer.put((byte)(passkey [c]));
-            //}
 
             return buffer;
         }
@@ -3206,8 +3219,8 @@ public class MavLink {
             this.x = x;
             this.y = y;
             this.z = z;
-            this.seq = seq;
-            this.command = command;
+            this.seq = flipEndian((int)seq);
+            this.command = flipEndian((int)command);
             this.target_system = target_system;
             this.target_component = target_component;
             this.frame = frame;
@@ -3363,7 +3376,7 @@ public class MavLink {
         }
 
         protected ByteBuffer encodePayload(ByteBuffer buffer) {
-
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
             buffer.putFloat(param1); // float
             buffer.putFloat(param2); // float
             buffer.putFloat(param3); // float
@@ -4081,7 +4094,7 @@ public class MavLink {
 
         protected ByteBuffer decodePayload(ByteBuffer buffer) {
 
-            seq = buffer.getShort() & 0xffff; // uint16_t
+            seq = flipEndian(buffer.getShort()) & 0xffff; // uint16_t
             target_system = (int)buffer.get() & 0xff; // uint8_t
             target_component = (int)buffer.get() & 0xff; // uint8_t
             return buffer;
@@ -4089,7 +4102,7 @@ public class MavLink {
 
         protected ByteBuffer encodePayload(ByteBuffer buffer) {
 
-            buffer.putShort((short)(seq & 0xffff)); // uint16_t
+            buffer.putShort((short)(flipEndian(seq) & 0xffff)); // uint16_t
             buffer.put((byte)(target_system & 0xff)); // uint8_t
             buffer.put((byte)(target_component & 0xff)); // uint8_t
             return buffer;
@@ -7854,7 +7867,7 @@ public class MavLink {
 
         protected ByteBuffer decodePayload(ByteBuffer buffer) {
 
-            count = buffer.getShort() & 0xffff; // uint16_t
+            count = flipEndian(buffer.getShort()) & 0xffff; // uint16_t
             target_system = (int)buffer.get() & 0xff; // uint8_t
             target_component = (int)buffer.get() & 0xff; // uint8_t
             return buffer;
@@ -7862,7 +7875,7 @@ public class MavLink {
 
         protected ByteBuffer encodePayload(ByteBuffer buffer) {
 
-            buffer.putShort((short)(count & 0xffff)); // uint16_t
+            buffer.putShort(flipEndian((short)(count & 0xffff))); // uint16_t
             buffer.put((byte)(target_system & 0xff)); // uint8_t
             buffer.put((byte)(target_component & 0xff)); // uint8_t
             return buffer;
@@ -8307,7 +8320,7 @@ public class MavLink {
 
         protected ByteBuffer decodePayload(ByteBuffer buffer) {
 
-            custom_mode = buffer.getInt() & 0xffffffff; // uint32_t
+            custom_mode = flipEndian(buffer.getInt()) & 0xffffffff; // uint32_t
             target_system = (int)buffer.get() & 0xff; // uint8_t
             base_mode = (int)buffer.get() & 0xff; // uint8_t
             return buffer;
@@ -9149,13 +9162,13 @@ public class MavLink {
 	 */
     public static class MSG_ATTITUDE extends Message {
 
-        private long time_boot_ms; // Timestamp (milliseconds since system boot)
-        private float roll; // Roll angle (rad, -pi..+pi)
-        private float pitch; // Pitch angle (rad, -pi..+pi)
-        private float yaw; // Yaw angle (rad, -pi..+pi)
-        private float rollspeed; // Roll angular speed (rad/s)
-        private float pitchspeed; // Pitch angular speed (rad/s)
-        private float yawspeed; // Yaw angular speed (rad/s)
+        private long time_boot_ms =0; // Timestamp (milliseconds since system boot)
+        private float roll=0; // Roll angle (rad, -pi..+pi)
+        private float pitch=0; // Pitch angle (rad, -pi..+pi)
+        private float yaw=0; // Yaw angle (rad, -pi..+pi)
+        private float rollspeed=0; // Roll angular speed (rad/s)
+        private float pitchspeed=0; // Pitch angular speed (rad/s)
+        private float yawspeed=0; // Yaw angular speed (rad/s)
 
         public MSG_ATTITUDE (byte[] bytes) {
             super(bytes);
@@ -10242,21 +10255,23 @@ public class MavLink {
             this.hdg = hdg;
         }
 
-
+        @Override
         protected ByteBuffer decodePayload(ByteBuffer buffer) {
 
-            time_boot_ms = buffer.getInt() & 0xffffffff; // uint32_t
-            lat = buffer.getInt(); // int32_t
-            lon = buffer.getInt(); // int32_t
-            alt = buffer.getInt(); // int32_t
-            relative_alt = buffer.getInt(); // int32_t
-            vx = buffer.getShort(); // int16_t
-            vy = buffer.getShort(); // int16_t
-            vz = buffer.getShort(); // int16_t
-            hdg = buffer.getShort() & 0xffff; // uint16_t
+            this.time_boot_ms = buffer.getInt() & 0xffffffff; // uint32_t
+            this.lat = flipEndian(buffer.getInt()); // int32_t
+            this.lon = flipEndian(buffer.getInt()); // int32_t
+            this.alt = flipEndian(buffer.getInt()); // int32_t
+            this.relative_alt = flipEndian(buffer.getInt()); // int32_t
+            this.vx = buffer.getShort(); // int16_t
+            this.vy = buffer.getShort(); // int16_t
+            this.vz = buffer.getShort(); // int16_t
+            this.hdg = buffer.getShort() & 0xffff; // uint16_t
+            System.out.println ( this );
             return buffer;
         }
 
+        @Override
         protected ByteBuffer encodePayload(ByteBuffer buffer) {
 
             buffer.putInt((int)(time_boot_ms & 0xffffffff)); // uint32_t
@@ -10275,8 +10290,8 @@ public class MavLink {
         public String toString() {
             return "MSG_GLOBAL_POSITION_INT { " +
                     "time_boot_ms = " + time_boot_ms + ", " +
-                    "lat = " + (lat/1e7) + ", " +
-                    "lon = " + (lon/1e7) + ", " +
+                    "lat = " + (lat/1E7) + ", " +
+                    "lon = " + (lon/1E7) + ", " +
                     "alt = " + alt + ", " +
                     "relative_alt = " + relative_alt + ", " +
                     "vx = " + vx + ", " +
@@ -10991,15 +11006,15 @@ public class MavLink {
 
         protected ByteBuffer decodePayload(ByteBuffer buffer) {
 
-            param1 = buffer.getFloat(); // float
-            param2 = buffer.getFloat(); // float
-            param3 = buffer.getFloat(); // float
-            param4 = buffer.getFloat(); // float
-            x = buffer.getFloat(); // float
-            y = buffer.getFloat(); // float
-            z = buffer.getFloat(); // float
-            seq = buffer.getShort() & 0xffff; // uint16_t
-            command = buffer.getShort() & 0xffff; // uint16_t
+            param1 = GetFloat32(flipEndian(buffer.getInt())); // float
+            param2 = GetFloat32(flipEndian(buffer.getInt())); // float
+            param3 = GetFloat32(flipEndian(buffer.getInt())); // float
+            param4 = GetFloat32(flipEndian(buffer.getInt())); // float
+            x = GetFloat32(flipEndian(buffer.getInt())); // float
+            y = GetFloat32(flipEndian(buffer.getInt())); // float
+            z = GetFloat32(flipEndian(buffer.getInt())); // float
+            seq = flipEndian(buffer.getShort()) & 0xffff; // uint16_t
+            command = flipEndian(buffer.getShort()) & 0xffff; // uint16_t
             target_system = (int)buffer.get() & 0xff; // uint8_t
             target_component = (int)buffer.get() & 0xff; // uint8_t
             frame = (int)buffer.get() & 0xff; // uint8_t
@@ -11010,15 +11025,15 @@ public class MavLink {
 
         protected ByteBuffer encodePayload(ByteBuffer buffer) {
 
-            buffer.putFloat(param1); // float
-            buffer.putFloat(param2); // float
-            buffer.putFloat(param3); // float
-            buffer.putFloat(param4); // float
-            buffer.putFloat(x); // float
-            buffer.putFloat(y); // float
-            buffer.putFloat(z); // float
-            buffer.putShort((short)(seq & 0xffff)); // uint16_t
-            buffer.putShort((short)(command & 0xffff)); // uint16_t
+            buffer.putInt(flipEndian(PackFloat32(param1)));
+            buffer.putInt(flipEndian(PackFloat32(param2)));
+            buffer.putInt(flipEndian(PackFloat32(param3)));
+            buffer.putInt(flipEndian(PackFloat32(param4)));
+            buffer.putInt(flipEndian(PackFloat32(x)));
+            buffer.putInt(flipEndian(PackFloat32(y)));
+            buffer.putInt(flipEndian(PackFloat32(z)));
+            buffer.putShort((short)(flipEndian((short)(seq & 0xffff) ))); // uint16_t
+            buffer.putShort((short)(flipEndian((short)(command& 0xffff))) ); // uint16_t
             buffer.put((byte)(target_system & 0xff)); // uint8_t
             buffer.put((byte)(target_component & 0xff)); // uint8_t
             buffer.put((byte)(frame & 0xff)); // uint8_t
@@ -12525,14 +12540,14 @@ public class MavLink {
 
         protected ByteBuffer decodePayload(ByteBuffer buffer) {
 
-            param1 = buffer.getFloat(); // float
-            param2 = buffer.getFloat(); // float
-            param3 = buffer.getFloat(); // float
-            param4 = buffer.getFloat(); // float
-            param5 = buffer.getFloat(); // float
-            param6 = buffer.getFloat(); // float
-            param7 = buffer.getFloat(); // float
-            command = buffer.getShort() & 0xffff; // uint16_t
+            param1 = GetFloat32(flipEndian(buffer.getInt())); // float
+            param2 = GetFloat32(flipEndian(buffer.getInt())); // float
+            param3 = GetFloat32(flipEndian(buffer.getInt())); // float
+            param4 = GetFloat32(flipEndian(buffer.getInt())); // float
+            param5 = GetFloat32(flipEndian(buffer.getInt())); // float
+            param6 = GetFloat32(flipEndian(buffer.getInt())); // float
+            param7 = GetFloat32(flipEndian(buffer.getInt())); // float
+            command = flipEndian(buffer.getShort()) & 0xffff; // uint16_t
             target_system = (int)buffer.get() & 0xff; // uint8_t
             target_component = (int)buffer.get() & 0xff; // uint8_t
             confirmation = (int)buffer.get() & 0xff; // uint8_t
@@ -12541,14 +12556,14 @@ public class MavLink {
 
         protected ByteBuffer encodePayload(ByteBuffer buffer) {
 
-            buffer.putFloat(param1); // float
-            buffer.putFloat(param2); // float
-            buffer.putFloat(param3); // float
-            buffer.putFloat(param4); // float
-            buffer.putFloat(param5); // float
-            buffer.putFloat(param6); // float
-            buffer.putFloat(param7); // float
-            buffer.putShort((short)(command & 0xffff)); // uint16_t
+            buffer.putInt(flipEndian(PackFloat32(param1))); // float
+            buffer.putInt(flipEndian(PackFloat32(param1))); // float
+            buffer.putInt(flipEndian(PackFloat32(param1))); // float
+            buffer.putInt(flipEndian(PackFloat32(param1))); // float
+            buffer.putInt(flipEndian(PackFloat32(param1))); // float
+            buffer.putInt(flipEndian(PackFloat32(param1))); // float
+            buffer.putInt(flipEndian(PackFloat32(param1))); // float
+            buffer.putShort(flipEndian((short)(command & 0xffff))); // uint16_t
             buffer.put((byte)(target_system & 0xff)); // uint8_t
             buffer.put((byte)(target_component & 0xff)); // uint8_t
             buffer.put((byte)(confirmation & 0xff)); // uint8_t
@@ -14884,14 +14899,14 @@ public class MavLink {
 	 */
     public static class MSG_ATTITUDE_QUATERNION extends Message {
 
-        private long time_boot_ms; // Timestamp (milliseconds since system boot)
-        private float q1; // Quaternion component 1, w (1 in null-rotation)
-        private float q2; // Quaternion component 2, x (0 in null-rotation)
-        private float q3; // Quaternion component 3, y (0 in null-rotation)
-        private float q4; // Quaternion component 4, z (0 in null-rotation)
-        private float rollspeed; // Roll angular speed (rad/s)
-        private float pitchspeed; // Pitch angular speed (rad/s)
-        private float yawspeed; // Yaw angular speed (rad/s)
+        private long time_boot_ms=0; // Timestamp (milliseconds since system boot)
+        private float q1=0; // Quaternion component 1, w (1 in null-rotation)
+        private float q2=0; // Quaternion component 2, x (0 in null-rotation)
+        private float q3=0; // Quaternion component 3, y (0 in null-rotation)
+        private float q4=0; // Quaternion component 4, z (0 in null-rotation)
+        private float rollspeed=0; // Roll angular speed (rad/s)
+        private float pitchspeed=0; // Pitch angular speed (rad/s)
+        private float yawspeed=0; // Yaw angular speed (rad/s)
 
         public MSG_ATTITUDE_QUATERNION (byte[] bytes) {
             super(bytes);
