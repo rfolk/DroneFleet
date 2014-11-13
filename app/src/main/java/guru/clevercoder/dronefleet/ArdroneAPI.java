@@ -222,12 +222,12 @@ public class ArdroneAPI {
             MavLink.MSG_MISSION_ITEM newMsg = new MavLink.MSG_MISSION_ITEM(systemId,
                     componentId,
                     0.0f,
-                    0.5f,
+                    0.3048f, // Radius of accuracy
                     0.0f,
                     0.0f,
                     (float)(nextCoord.latitude),
                     (float)(nextCoord.longitude),
-                    3.0f,
+                    3.0f, // height in meters
                     flightPlanLastSend,
                     ((flightPlan.size()-1==flightPlanLastSend)?MavLink.MAV_CMD_NAV_LAND:MavLink.MAV_CMD_NAV_WAYPOINT),
                     targetSystem,
