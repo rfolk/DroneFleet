@@ -51,8 +51,12 @@ public class MapScreen extends FragmentActivity implements
     public double longitude;
     public PolylineOptions flightPathLine;
     public Polyline renderPathLine;
+    public PolylineOptions normLineOpts;
+    public Polyline normLine;
     public PolygonOptions flightPathShape;
     public Polygon renderPathShape;
+    public PolygonOptions normShapeOpts;
+    public Polygon normShape;
     private LocationClient mLocationClient;
     private final MapScreen handle = this;
     public boolean running = false;
@@ -75,6 +79,8 @@ public class MapScreen extends FragmentActivity implements
 
     private int connectedDrones = 0;
     private int flightPlansReady = 0;
+
+    private double leastViableDistance = (1E-5)/2;
 
     @Override
     protected void onCreate( Bundle savedInstanceState )
@@ -294,7 +300,7 @@ public class MapScreen extends FragmentActivity implements
                     builder.setItems(colors, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            // the user clicked on colors[which]
+                        // the user clicked on colors[which]
                             switch ( which ) {
                                 case 1:
                                     initSim();
@@ -356,25 +362,29 @@ public class MapScreen extends FragmentActivity implements
                 if ( renderPathLine != null )
                 {
                     renderPathLine.remove();
+                    normLine.remove();
                     flightPathLine = null;
                     coordinates = null;
                 }
                 if ( renderPathShape != null )
                 {
                     renderPathShape.remove();
+                    normShape.remove();
                     flightPathShape = null;
                     coordinates = null;
                 }
 
                 flightPathLine = new PolylineOptions();
+                normLineOpts = new PolylineOptions();
                 flightPathShape = new PolygonOptions();
+                normShapeOpts = new PolygonOptions();
                 coordinates = new ArrayList<LatLng>();
 
                 float x = motionEvent.getX();
                 float y = motionEvent.getY();
 
-                Log.i("ON_DRAG", "X:" + String.valueOf(x));
-                Log.i("ON_DRAG", "Y:" + String.valueOf(y));
+                //Log.i("ON_DRAG", "X:" + String.valueOf(x));
+                //Log.i("ON_DRAG", "Y:" + String.valueOf(y));
 
                 int x_co = Integer.parseInt(String.valueOf(Math.round(x)));
                 int y_co = Integer.parseInt(String.valueOf(Math.round(y)));
@@ -406,8 +416,8 @@ public class MapScreen extends FragmentActivity implements
                 float x = motionEvent.getX();
                 float y = motionEvent.getY();
 
-                Log.i("ON_DRAG", "X:" + String.valueOf(x));
-                Log.i("ON_DRAG", "Y:" + String.valueOf(y));
+                //Log.i("ON_DRAG", "X:" + String.valueOf(x));
+                //Log.i("ON_DRAG", "Y:" + String.valueOf(y));
 
                 int x_co = Integer.parseInt(String.valueOf(Math.round(x)));
                 int y_co = Integer.parseInt(String.valueOf(Math.round(y)));
@@ -437,20 +447,26 @@ public class MapScreen extends FragmentActivity implements
                             .visible(true)
                             .zIndex(1000);
                     renderPathLine = map.addPolyline(flightPathLine);
+                    distanceBetweenPointsLine();
+                    normalizeLine();
                 }
                 else if ( drawingShape )
                 {
+                    flightPathShape.add(coordinates.get(0));
+                    coordinates.add(coordinates.get(0));
                     flightPathShape
                             .strokeWidth(5)
                             .strokeColor(Color.RED)
                             .visible(true)
                             .zIndex(1000);
                     renderPathShape = map.addPolygon(flightPathShape);
+                    distanceBetweenPointsShape();
+                    normalizeShape();
                 }
                 Log.i("Array for Points Size:", " " + String.valueOf(coordinates.size()));
                 if ( extras != null )
                 {
-                    Log.i("Came from:", resultingFrom);
+                    //Log.i("Came from:", resultingFrom);
                 }
 
                 // Adding multiple points in map using polyline and arraylist
@@ -468,7 +484,7 @@ public class MapScreen extends FragmentActivity implements
         if ( ConnectionResult.SUCCESS == resultCode )
         {
             // In debug mode, log the status
-            Log.d( "Location Updates", "Google Play Services are available." );
+            //Log.d( "Location Updates", "Google Play Services are available." );
             return true;
         }
         else
@@ -603,4 +619,94 @@ public class MapScreen extends FragmentActivity implements
             Log.i ( "DroneMessage" , "Error in GPS" );
         }
      }
+
+    private void distanceBetweenPointsShape()
+    {
+        for ( int i = 0; i < coordinates.size() - 1; ++i )
+        {
+            int v2 = i + 1;
+            Log.d("ED ("+ i + "," + v2 + "): ", "" + distanceBetweenPoints(coordinates.get(i), coordinates.get(i + 1)));
+        }
+        Log.d("ED ("+ coordinates.size() + "," + 0 + "): ", "" + distanceBetweenPoints(coordinates.get(coordinates.size() - 1), coordinates.get(0)));
+    }
+
+    private void distanceBetweenPointsLine()
+    {
+        for ( int i = 0; i < coordinates.size() - 1; ++i )
+        {
+            int v2 = i + 1;
+            Log.d("ED ("+ i + "," + v2 + "): ", "" + distanceBetweenPoints(coordinates.get(i), coordinates.get(i + 1)));
+        }
+    }
+
+    private double distanceBetweenPoints( LatLng p1, LatLng p2 )
+    {
+        return Math.sqrt(Math.pow((p2.latitude - p1.latitude), 2) + Math.pow((p2.longitude - p1.longitude), 2));
+    }
+
+    private void normalizeShape()
+    {
+        normShapeOpts.add( coordinates.get( 0 ) );
+        ArrayList<LatLng> temp = new ArrayList<LatLng>();
+        temp.add( coordinates.get( 0 ) );
+        boolean addPoint;
+        for ( int i = 1; i < coordinates.size() - 1; ++i )
+        {
+            addPoint = true;
+            for ( int j = 0; j < temp.size(); ++j )
+            {
+                if ( distanceBetweenPoints(coordinates.get(i), temp.get(j)) < leastViableDistance )
+                {
+                    addPoint = false;
+                }
+            }
+            if ( addPoint == true )
+            {
+                temp.add( coordinates.get( i ) );
+            }
+        }
+        for ( int i = 1; i < temp.size(); ++i )
+        {
+            normShapeOpts.add( temp.get( i ) );
+        }
+        normShapeOpts
+                .strokeWidth(2)
+                .strokeColor(Color.BLUE)
+                .visible(true)
+                .zIndex(1001);
+        normShape = map.addPolygon( normShapeOpts );
+    }
+
+    private void normalizeLine()
+    {
+        normLineOpts.add( coordinates.get( 0 ) );
+        ArrayList<LatLng> temp = new ArrayList<LatLng>();
+        temp.add( coordinates.get( 0 ) );
+        boolean addPoint;
+        for ( int i = 1; i < coordinates.size() - 1; ++i )
+        {
+            addPoint = true;
+            for ( int j = 0; j < temp.size(); ++j )
+            {
+                if ( distanceBetweenPoints(coordinates.get(i), temp.get(j)) < leastViableDistance )
+                {
+                    addPoint = false;
+                }
+            }
+            if ( addPoint == true )
+            {
+                temp.add( coordinates.get( i ) );
+            }
+        }
+        for ( int i = 1; i < temp.size(); ++i )
+        {
+            normLineOpts.add( temp.get( i ) );
+        }
+        normLineOpts
+                .width(2)
+                .color(Color.BLUE)
+                .visible(true)
+                .zIndex(1001);
+        normLine = map.addPolyline( normLineOpts );
+    }
 }
