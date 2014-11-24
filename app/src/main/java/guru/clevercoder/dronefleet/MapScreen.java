@@ -76,6 +76,7 @@ public class MapScreen extends FragmentActivity implements
     private String resultingFrom;
 
     private ArrayList<LatLng> coordinates;
+    private ArrayList<LatLng> normCoordinates;
 
     private int connectedDrones = 0;
     private int flightPlansReady = 0;
@@ -365,6 +366,7 @@ public class MapScreen extends FragmentActivity implements
                     normLine.remove();
                     flightPathLine = null;
                     coordinates = null;
+                    normCoordinates = null;
                 }
                 if ( renderPathShape != null )
                 {
@@ -372,6 +374,7 @@ public class MapScreen extends FragmentActivity implements
                     normShape.remove();
                     flightPathShape = null;
                     coordinates = null;
+                    normCoordinates = null;
                 }
 
                 flightPathLine = new PolylineOptions();
@@ -379,6 +382,7 @@ public class MapScreen extends FragmentActivity implements
                 flightPathShape = new PolygonOptions();
                 normShapeOpts = new PolygonOptions();
                 coordinates = new ArrayList<LatLng>();
+                normCoordinates = new ArrayList<LatLng>();
 
                 float x = motionEvent.getX();
                 float y = motionEvent.getY();
@@ -537,7 +541,7 @@ public class MapScreen extends FragmentActivity implements
         coordinates.add(new LatLng(32.28095,-106.752659));
         coordinates.add(new LatLng(32.280971,-106.75262));
 
-        ArrayList< ArrayList<LatLng> > flightPlans = coordAuction.auctionPoints ( drones , coordinates );
+        ArrayList< ArrayList<LatLng> > flightPlans = coordAuction.auctionPoints ( drones , normCoordinates );
 
         for ( int i = 0 ; i < drones.size ( ) ; ++ i ) {
             drones.get(i).buildFlightPlan(flightPlans.get(i));
@@ -668,6 +672,7 @@ public class MapScreen extends FragmentActivity implements
         for ( int i = 1; i < temp.size(); ++i )
         {
             normShapeOpts.add( temp.get( i ) );
+            normCoordinates.add( temp.get( i ) );
         }
         normShapeOpts
                 .strokeWidth(2)
@@ -696,6 +701,7 @@ public class MapScreen extends FragmentActivity implements
             if ( addPoint == true )
             {
                 temp.add( coordinates.get( i ) );
+                normCoordinates.add( temp.get( i ) );
             }
         }
         for ( int i = 1; i < temp.size(); ++i )
