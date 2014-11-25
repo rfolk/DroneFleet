@@ -222,7 +222,7 @@ public class ArdroneAPI {
             MavLink.MSG_MISSION_ITEM newMsg = new MavLink.MSG_MISSION_ITEM(systemId,
                     componentId,
                     0.0f,
-                    0.3048f, // Radius of accuracy
+                    0.75f, // Radius of accuracy
                     0.0f,
                     0.0f,
                     (float)(nextCoord.latitude),

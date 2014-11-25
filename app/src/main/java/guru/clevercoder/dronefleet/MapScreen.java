@@ -81,7 +81,7 @@ public class MapScreen extends FragmentActivity implements
     private int connectedDrones = 0;
     private int flightPlansReady = 0;
 
-    private double leastViableDistance = (1E-5)/2;
+    private double leastViableDistance = (1E-4)/2;
 
     @Override
     protected void onCreate( Bundle savedInstanceState )
@@ -467,7 +467,8 @@ public class MapScreen extends FragmentActivity implements
                     distanceBetweenPointsShape();
                     normalizeShape();
                 }
-                Log.i("Array for Points Size:", " " + String.valueOf(coordinates.size()));
+                Log.i("Number of Points in coordinates:", " " + String.valueOf(coordinates.size()));
+                Log.i("Number of Points in normCoordinates:", " " + String.valueOf(normCoordinates.size()));
                 if ( extras != null )
                 {
                     //Log.i("Came from:", resultingFrom);
@@ -653,6 +654,7 @@ public class MapScreen extends FragmentActivity implements
         normShapeOpts.add( coordinates.get( 0 ) );
         ArrayList<LatLng> temp = new ArrayList<LatLng>();
         temp.add( coordinates.get( 0 ) );
+        normCoordinates.add( coordinates.get( 0 ) );
         boolean addPoint;
         for ( int i = 1; i < coordinates.size() - 1; ++i )
         {
@@ -667,12 +669,12 @@ public class MapScreen extends FragmentActivity implements
             if ( addPoint == true )
             {
                 temp.add( coordinates.get( i ) );
+                normCoordinates.add( coordinates.get( i ) );
             }
         }
-        for ( int i = 1; i < temp.size(); ++i )
+        for ( int i = 0; i < temp.size(); ++i )
         {
             normShapeOpts.add( temp.get( i ) );
-            normCoordinates.add( temp.get( i ) );
         }
         normShapeOpts
                 .strokeWidth(2)
@@ -687,6 +689,7 @@ public class MapScreen extends FragmentActivity implements
         normLineOpts.add( coordinates.get( 0 ) );
         ArrayList<LatLng> temp = new ArrayList<LatLng>();
         temp.add( coordinates.get( 0 ) );
+        normCoordinates.add( coordinates.get( 0 ) );
         boolean addPoint;
         for ( int i = 1; i < coordinates.size() - 1; ++i )
         {
@@ -701,10 +704,10 @@ public class MapScreen extends FragmentActivity implements
             if ( addPoint == true )
             {
                 temp.add( coordinates.get( i ) );
-                normCoordinates.add( temp.get( i ) );
+                normCoordinates.add( coordinates.get( i ) );
             }
         }
-        for ( int i = 1; i < temp.size(); ++i )
+        for ( int i = 0; i < temp.size(); ++i )
         {
             normLineOpts.add( temp.get( i ) );
         }
