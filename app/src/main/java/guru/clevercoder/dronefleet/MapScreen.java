@@ -467,8 +467,8 @@ public class MapScreen extends FragmentActivity implements
                     distanceBetweenPointsShape();
                     normalizeShape();
                 }
-                Log.i("Number of Points in coordinates:", " " + String.valueOf(coordinates.size()));
-                Log.i("Number of Points in normCoordinates:", " " + String.valueOf(normCoordinates.size()));
+                Log.i("Number of  in coordinates:", " " + String.valueOf(coordinates.size()));
+                Log.i("Number of PoinPointsts in normCoordinates:", " " + String.valueOf(normCoordinates.size()));
                 if ( extras != null )
                 {
                     //Log.i("Came from:", resultingFrom);
@@ -512,7 +512,7 @@ public class MapScreen extends FragmentActivity implements
     public void coordinateFlight ( ) {
         Auction coordAuction = new Auction ( );
         flightPlansReady = 0;
-        coordinates = new ArrayList<LatLng>();
+        //coordinates = new ArrayList<LatLng>();
 
 
         /* Large Field
@@ -533,14 +533,14 @@ public class MapScreen extends FragmentActivity implements
         */
 
         /* Small Field Next to CS Dept. */
-        coordinates.add(new LatLng(32.280979,-106.752577));
-        coordinates.add(new LatLng(32.280978,-106.752541));
-        coordinates.add(new LatLng(32.280869,-106.752542));
-        coordinates.add(new LatLng(32.280859,-106.752587));
-        coordinates.add(new LatLng(32.280876,-106.752635));
-        coordinates.add(new LatLng(32.280916,-106.752668));
-        coordinates.add(new LatLng(32.28095,-106.752659));
-        coordinates.add(new LatLng(32.280971,-106.75262));
+//        coordinates.add(new LatLng(32.280979,-106.752577));
+//        coordinates.add(new LatLng(32.280978,-106.752541));
+//        coordinates.add(new LatLng(32.280869,-106.752542));
+//        coordinates.add(new LatLng(32.280859,-106.752587));
+//        coordinates.add(new LatLng(32.280876,-106.752635));
+//        coordinates.add(new LatLng(32.280916,-106.752668));
+//        coordinates.add(new LatLng(32.28095,-106.752659));
+//        coordinates.add(new LatLng(32.280971,-106.75262));
 
         ArrayList< ArrayList<LatLng> > flightPlans = coordAuction.auctionPoints ( drones , normCoordinates );
 
