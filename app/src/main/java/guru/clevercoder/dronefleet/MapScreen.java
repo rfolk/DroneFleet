@@ -3,13 +3,16 @@ package guru.clevercoder.dronefleet;
 import android.app.Activity;
 import android.app.Dialog;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.location.Location;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -63,8 +66,8 @@ public class MapScreen extends FragmentActivity implements
     // Define a request code to send to Google Play services This code is returned in Activity.onActivityResult
     private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
 
-    public ArrayList<Marker> droneMarkers;
-    public ArrayList<ArdroneAPI> drones;
+    public ArrayList<Marker> droneMarkers=null;
+    public ArrayList<ArdroneAPI> drones=null;
 
     private boolean mapIsDrawable;
     private boolean drawingLine;
@@ -83,6 +86,8 @@ public class MapScreen extends FragmentActivity implements
 
     private double leastViableDistance = (1E-4)/2;
 
+    private ArdroneSimulator simulator=null;
+
     @Override
     protected void onCreate( Bundle savedInstanceState )
     {
@@ -90,7 +95,7 @@ public class MapScreen extends FragmentActivity implements
         setContentView( R.layout.map_screen );
 
         mLocationClient = new LocationClient( this, this, this );
-
+        simulator = new ArdroneSimulator();
         initializeMap();
 
         map.setMyLocationEnabled( true );
@@ -155,18 +160,36 @@ public class MapScreen extends FragmentActivity implements
         }
     }
 
+    private void cleanUpEnvironment ( ) {
+
+        // Do some cleanup of a previous execution
+        if ( drones != null && droneMarkers != null ) {
+            for ( int i = 0 ; i < droneMarkers.size() ; ++ i ) {
+                droneMarkers.get(i).remove();
+            }
+        }
+
+    }
+
     // Initialize real drones and prepare them with provided path
     private void initReal ( ) {
+        // Clean up
+        cleanUpEnvironment();
+
         drones = new ArrayList<ArdroneAPI>();
         droneMarkers = new ArrayList<Marker>();
 
         // Initialize a drone object per drone
-        drones.add( new ArdroneAPI("192.168.43.4", this ) );
+        SharedPreferences e = PreferenceManager.getDefaultSharedPreferences(this);
+        String drone1_ip = e.getString("drone1_ip","192.168.43.4");
+        String drone2_ip = e.getString("drone2_ip","192.168.43.5");
+
+        drones.add( new ArdroneAPI(drone1_ip, this ) );
         droneMarkers.add(handle.map.addMarker(new MarkerOptions().position(new LatLng(0, 0))
                 .title(drones.get(0).toString())
                 .icon(BitmapDescriptorFactory.fromResource(R.drawable.dronemarker))));
 
-        drones.add( new ArdroneAPI("192.168.43.5", this ) );
+        drones.add( new ArdroneAPI(drone2_ip, this ) );
         droneMarkers.add(handle.map.addMarker(new MarkerOptions().position(new LatLng(0,0))
                 .title(drones.get(1).toString())
                 .icon(BitmapDescriptorFactory.fromResource(R.drawable.dronemarker))));
@@ -184,10 +207,32 @@ public class MapScreen extends FragmentActivity implements
     }
 
     private void initSim ( ) {
-       // Init # of drones specified.
+        // Clean up
+        cleanUpEnvironment();
 
-       // Wait for ID's associated with drone communication
+        Auction coordAuction = new Auction ( );
+        SharedPreferences e = PreferenceManager.getDefaultSharedPreferences(this);
+        int droneSimulated = e.getInt("numberSimDrones",2);
+        Location location = mLocationClient.getLastLocation();
+        drones = new ArrayList<ArdroneAPI>();
+        droneMarkers = new ArrayList<Marker>();
 
+        // Initialize a drone object per drone
+        for ( int i = 0 ; i < droneSimulated ; ++ i ) {
+            ArdroneAPI tmpDrone = new ArdroneAPI(this);
+            tmpDrone.setPosition(new LatLng(location.getLatitude()+i/10000, location.getLongitude()+i/10000));
+            Log.i("TAG",""+tmpDrone.getCurrentCoord());
+            drones.add(tmpDrone);
+            droneMarkers.add(handle.map.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude()+i/10000, location.getLongitude()+i/10000))
+                    .title("Drone_"+i)
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.dronemarker))));
+        }
+
+        ArrayList< ArrayList<LatLng> > flightPlans = coordAuction.auctionPoints ( drones , normCoordinates );
+
+        // Init # of drones specified.
+        simulator.simulationDrones(drones,flightPlans);
+        simulator.simulationRun();
     }
 
     /**
@@ -376,6 +421,7 @@ public class MapScreen extends FragmentActivity implements
                     coordinates = null;
                     normCoordinates = null;
                 }
+                cleanUpEnvironment();
 
                 flightPathLine = new PolylineOptions();
                 normLineOpts = new PolylineOptions();
@@ -602,27 +648,20 @@ public class MapScreen extends FragmentActivity implements
     }
 
     public void updateGPSMarkers ( ) {
-        try {
+
             for (int i = 0; i < drones.size(); ++i) {
                 droneMarkers.get(i).setPosition(drones.get(i).getCurrentCoord());
             }
-        } finally {
-            Log.i ("DroneMessage" , "Error retrieving GPS" );
-        }
+
     }
 
     public void onDroneGPS ( ArdroneAPI drone ) {
-        try {
             runOnUiThread(new Runnable ( ) {
                 public void run ( ) {
                     handle.updateGPSMarkers();
                 }
             });
-        } catch ( Exception e ) {
-            Log.i ( "DroneMessage" , "ERROR in GPS::"+e );
-        } finally {
-            Log.i ( "DroneMessage" , "Error in GPS" );
-        }
+
      }
 
     private void distanceBetweenPointsShape()

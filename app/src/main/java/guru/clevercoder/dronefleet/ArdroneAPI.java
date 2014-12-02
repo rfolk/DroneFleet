@@ -30,9 +30,12 @@ public class ArdroneAPI {
     private ArrayList<LatLng> flightPlan;
     private int flightPlanId = 0;
     private boolean sendingFlightPlan = false;
+
+
     private int flightPlanLastSend = -1;
     public final ArdroneAPI handle;
     public ArdroneAPICallbacks callbacks;
+
     private boolean connected = false;
     private boolean flightPlanned = false;
 
@@ -73,8 +76,9 @@ public class ArdroneAPI {
         }
     }
 
-    public ArdroneAPI(){
+    public ArdroneAPI(ArdroneAPICallbacks callbackClass){
         handle=this;
+        callbacks = callbackClass;
 
     }
 
@@ -199,6 +203,11 @@ public class ArdroneAPI {
 
     private void handleGlobalPositionInt ( MavLink.MSG_GLOBAL_POSITION_INT msg ) {
         droneCoord = new LatLng ((double)msg.getLat()/1E7,(double)msg.getLon()/1E7);
+        callbacks.onDroneGPS(this);
+    }
+
+    public void setPosition ( LatLng pos ){
+        droneCoord = pos;
         callbacks.onDroneGPS(this);
     }
 

@@ -82,7 +82,9 @@ public class Auction {
         // ensure that all drones will travel in the same direction to avoid collision.
         for (int d = 0; d < drones.size(); d++) {
             LatLng droneInitPoint = initPoints.get(d);
+            Log.i("TAG",""+droneInitPoint);
             LatLng droneDirectionPoint = points.get((points.indexOf(droneInitPoint) + 1) % points.size());
+
             assignPoint(d, droneAssignments.get(d), droneInitPoint, points, droneCurrentTotalCost, 0);
             assignPoint(d, droneAssignments.get(d), droneDirectionPoint, points, droneCurrentTotalCost,
                     calculateDistanceToPoint(droneInitPoint, droneDirectionPoint));
