@@ -256,12 +256,12 @@ public class MapScreen extends FragmentActivity implements
      */
     public ArrayList<ArrayList<LatLng> > generateFlightPlan ( ArrayList<ArdroneAPI> drones,  ArrayList<LatLng> drawnPath ) {
         // Auction
-        //Auction coordAuction = new Auction ( );
-        //ArrayList< ArrayList<LatLng> > flightPlans = coordAuction.auctionPoints ( drones , drawnPath );
+        Auction coordAuction = new Auction ( );
+        ArrayList< ArrayList<LatLng> > flightPlans = coordAuction.auctionPoints ( drones , drawnPath );
 
         // SimpleFlightCoordination
-        SimpleFlightCoordination flightPlanner = new SimpleFlightCoordination();
-        ArrayList< ArrayList<LatLng> > flightPlans = flightPlanner.generateFlightPlan ( drones , drawnPath );
+        //SimpleFlightCoordination flightPlanner = new SimpleFlightCoordination();
+        //ArrayList< ArrayList<LatLng> > flightPlans = flightPlanner.generateFlightPlan ( drones , drawnPath );
 
         return flightPlans;
     }
