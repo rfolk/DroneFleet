@@ -3358,15 +3358,15 @@ public class MavLink {
 
         protected ByteBuffer decodePayload(ByteBuffer buffer) {
 
-            param1 = buffer.getFloat(); // float
-            param2 = buffer.getFloat(); // float
-            param3 = buffer.getFloat(); // float
-            param4 = buffer.getFloat(); // float
-            x = buffer.getInt(); // int32_t
-            y = buffer.getInt(); // int32_t
-            z = buffer.getFloat(); // float
-            seq = buffer.getShort() & 0xffff; // uint16_t
-            command = buffer.getShort() & 0xffff; // uint16_t
+            param1 = GetFloat32(flipEndian(buffer.getInt())); // float
+            param2 = GetFloat32(flipEndian(buffer.getInt())); // float
+            param3 = GetFloat32(flipEndian(buffer.getInt())); // float
+            param4 = GetFloat32(flipEndian(buffer.getInt())); // float
+            x = flipEndian(buffer.getInt()); // int32_t
+            y = flipEndian(buffer.getInt()); // int32_t
+            z = flipEndian(buffer.getInt()); // float
+            seq = flipEndian(buffer.getShort()) & 0xffff; // uint16_t
+            command = flipEndian(buffer.getShort()) & 0xffff; // uint16_t
             target_system = (int)buffer.get() & 0xff; // uint8_t
             target_component = (int)buffer.get() & 0xff; // uint8_t
             frame = (int)buffer.get() & 0xff; // uint8_t
@@ -3376,7 +3376,6 @@ public class MavLink {
         }
 
         protected ByteBuffer encodePayload(ByteBuffer buffer) {
-            buffer.order(ByteOrder.LITTLE_ENDIAN);
             buffer.putFloat(param1); // float
             buffer.putFloat(param2); // float
             buffer.putFloat(param3); // float
@@ -10258,15 +10257,15 @@ public class MavLink {
         @Override
         protected ByteBuffer decodePayload(ByteBuffer buffer) {
 
-            this.time_boot_ms = buffer.getInt() & 0xffffffff; // uint32_t
+            this.time_boot_ms = flipEndian(buffer.getInt()) & 0xffffffff; // uint32_t
             this.lat = flipEndian(buffer.getInt()); // int32_t
             this.lon = flipEndian(buffer.getInt()); // int32_t
             this.alt = flipEndian(buffer.getInt()); // int32_t
             this.relative_alt = flipEndian(buffer.getInt()); // int32_t
-            this.vx = buffer.getShort(); // int16_t
-            this.vy = buffer.getShort(); // int16_t
-            this.vz = buffer.getShort(); // int16_t
-            this.hdg = buffer.getShort() & 0xffff; // uint16_t
+            this.vx = flipEndian(buffer.getShort()); // int16_t
+            this.vy = flipEndian(buffer.getShort()); // int16_t
+            this.vz = flipEndian(buffer.getShort()); // int16_t
+            this.hdg = flipEndian(buffer.getShort()) & 0xffff; // uint16_t
             System.out.println ( this );
             return buffer;
         }

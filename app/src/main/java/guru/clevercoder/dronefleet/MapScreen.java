@@ -37,6 +37,7 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 
 import java.util.ArrayList;
+import java.util.List;
 
 
 public class MapScreen extends FragmentActivity implements
@@ -54,11 +55,11 @@ public class MapScreen extends FragmentActivity implements
     public double longitude;
     public PolylineOptions flightPathLine;
     public Polyline renderPathLine;
-    public PolylineOptions normLineOpts;
+    //public PolylineOptions normLineOpts;
     public Polyline normLine;
     public PolygonOptions flightPathShape;
     public Polygon renderPathShape;
-    public PolygonOptions normShapeOpts;
+    //public PolygonOptions normShapeOpts;
     public Polygon normShape;
     private LocationClient mLocationClient;
     private final MapScreen handle = this;
@@ -87,7 +88,7 @@ public class MapScreen extends FragmentActivity implements
     private double leastViableDistance = (1E-4)/2;
 
     private ArdroneSimulator simulator=null;
-
+    private PathNormalizer pNormalizer=null;
     @Override
     protected void onCreate( Bundle savedInstanceState )
     {
@@ -109,7 +110,10 @@ public class MapScreen extends FragmentActivity implements
         drawShape.setOnClickListener( this );
         go = ( Button ) findViewById( R.id.btn_go );
         go.setOnClickListener( this );
+
+        pNormalizer = new PathNormalizer();
     }
+
 
     /**
      * Called when the Activity becomes visible.
@@ -160,6 +164,10 @@ public class MapScreen extends FragmentActivity implements
         }
     }
 
+    /**
+     * Does a quick clean up of the Map Environment when drawing a new path and also clears
+     *   Drone configuration.
+     */
     private void cleanUpEnvironment ( ) {
 
         // Do some cleanup of a previous execution
@@ -185,15 +193,20 @@ public class MapScreen extends FragmentActivity implements
         String drone2_ip = e.getString("drone2_ip","192.168.43.5");
 
         drones.add( new ArdroneAPI(drone1_ip, this ) );
+
+        drones.add( new ArdroneAPI(drone2_ip, this ) );
+
+        // Initialize drone markers on Google Map
         droneMarkers.add(handle.map.addMarker(new MarkerOptions().position(new LatLng(0, 0))
                 .title(drones.get(0).toString())
                 .icon(BitmapDescriptorFactory.fromResource(R.drawable.dronemarker))));
 
-        drones.add( new ArdroneAPI(drone2_ip, this ) );
+
         droneMarkers.add(handle.map.addMarker(new MarkerOptions().position(new LatLng(0,0))
                 .title(drones.get(1).toString())
                 .icon(BitmapDescriptorFactory.fromResource(R.drawable.dronemarker))));
 
+        // Begin communication with Drones
         final ArrayList<ArdroneAPI> dronesStatic = drones;
         // Connect all drones
         new Thread( new Runnable() {
@@ -210,7 +223,6 @@ public class MapScreen extends FragmentActivity implements
         // Clean up
         cleanUpEnvironment();
 
-        Auction coordAuction = new Auction ( );
         SharedPreferences e = PreferenceManager.getDefaultSharedPreferences(this);
         int droneSimulated = e.getInt("numberSimDrones",2);
         Location location = mLocationClient.getLastLocation();
@@ -228,11 +240,30 @@ public class MapScreen extends FragmentActivity implements
                     .icon(BitmapDescriptorFactory.fromResource(R.drawable.dronemarker))));
         }
 
-        ArrayList< ArrayList<LatLng> > flightPlans = coordAuction.auctionPoints ( drones , normCoordinates );
+
+        ArrayList<ArrayList<LatLng> > flightPlans = generateFlightPlan(drones, normCoordinates);
 
         // Init # of drones specified.
         simulator.simulationDrones(drones,flightPlans);
         simulator.simulationRun();
+    }
+
+    /**
+     * Called when a path has been drawn in order to coordinate N drones.
+     * @param drones
+     * @param drawnPath
+     * @return flightPlans for each drone
+     */
+    public ArrayList<ArrayList<LatLng> > generateFlightPlan ( ArrayList<ArdroneAPI> drones,  ArrayList<LatLng> drawnPath ) {
+        // Auction
+        //Auction coordAuction = new Auction ( );
+        //ArrayList< ArrayList<LatLng> > flightPlans = coordAuction.auctionPoints ( drones , drawnPath );
+
+        // SimpleFlightCoordination
+        SimpleFlightCoordination flightPlanner = new SimpleFlightCoordination();
+        ArrayList< ArrayList<LatLng> > flightPlans = flightPlanner.generateFlightPlan ( drones , drawnPath );
+
+        return flightPlans;
     }
 
     /**
@@ -365,6 +396,10 @@ public class MapScreen extends FragmentActivity implements
 
     }
 
+    /**
+     * Initializes Google Map interface into Activity
+     * Tracks Gestures when drawing a path
+     */
     private void initializeMap()
     {
 
@@ -408,7 +443,7 @@ public class MapScreen extends FragmentActivity implements
                 if ( renderPathLine != null )
                 {
                     renderPathLine.remove();
-                    normLine.remove();
+                    //normLine.remove();
                     flightPathLine = null;
                     coordinates = null;
                     normCoordinates = null;
@@ -416,7 +451,7 @@ public class MapScreen extends FragmentActivity implements
                 if ( renderPathShape != null )
                 {
                     renderPathShape.remove();
-                    normShape.remove();
+                    //normShape.remove();
                     flightPathShape = null;
                     coordinates = null;
                     normCoordinates = null;
@@ -424,9 +459,9 @@ public class MapScreen extends FragmentActivity implements
                 cleanUpEnvironment();
 
                 flightPathLine = new PolylineOptions();
-                normLineOpts = new PolylineOptions();
                 flightPathShape = new PolygonOptions();
-                normShapeOpts = new PolygonOptions();
+                //normLineOpts = new PolylineOptions();
+                //normShapeOpts = new PolygonOptions();
                 coordinates = new ArrayList<LatLng>();
                 normCoordinates = new ArrayList<LatLng>();
 
@@ -491,27 +526,28 @@ public class MapScreen extends FragmentActivity implements
                 // Create polyline options with existing LatLng ArrayList
                 if ( drawingLine )
                 {
-                    flightPathLine
-                            .width(5)
+                    normCoordinates = pNormalizer.normalizeLine((ArrayList<LatLng>)flightPathLine.getPoints());
+                    flightPathLine = new PolylineOptions();
+                    flightPathLine.width(5)
                             .color(Color.RED)
                             .visible(true)
                             .zIndex(1000);
+                    flightPathLine.addAll(normCoordinates);
                     renderPathLine = map.addPolyline(flightPathLine);
-                    distanceBetweenPointsLine();
-                    normalizeLine();
+
                 }
                 else if ( drawingShape )
                 {
                     flightPathShape.add(coordinates.get(0));
                     coordinates.add(coordinates.get(0));
-                    flightPathShape
-                            .strokeWidth(5)
+                    normCoordinates = pNormalizer.normalizeLine((ArrayList<LatLng>)flightPathShape.getPoints());
+                    flightPathShape = new PolygonOptions();
+                    flightPathShape.strokeWidth(5)
                             .strokeColor(Color.RED)
                             .visible(true)
                             .zIndex(1000);
+                    flightPathShape.addAll(normCoordinates);
                     renderPathShape = map.addPolygon(flightPathShape);
-                    distanceBetweenPointsShape();
-                    normalizeShape();
                 }
                 Log.i("Number of  in coordinates:", " " + String.valueOf(coordinates.size()));
                 Log.i("Number of PoinPointsts in normCoordinates:", " " + String.valueOf(normCoordinates.size()));
@@ -558,44 +594,18 @@ public class MapScreen extends FragmentActivity implements
     public void coordinateFlight ( ) {
         Auction coordAuction = new Auction ( );
         flightPlansReady = 0;
-        //coordinates = new ArrayList<LatLng>();
 
+        ArrayList< ArrayList<LatLng> > flightPlans = generateFlightPlan ( drones , normCoordinates );
 
-        /* Large Field
-        coordinates.add(new LatLng(32.279401,-106.746412));
-        coordinates.add(new LatLng(32.279412,-106.746308));
-        coordinates.add(new LatLng(32.27938,-106.746246));
-        coordinates.add(new LatLng(32.279335,-106.746224));
-        coordinates.add(new LatLng(32.279283,-106.746216));
-        coordinates.add(new LatLng(32.279228,-106.746219));
-        coordinates.add(new LatLng(32.279183,-106.746251));
-        coordinates.add(new LatLng(32.279165,-106.746326));
-        coordinates.add(new LatLng(32.279181,-106.746399));
-        coordinates.add(new LatLng(32.279226,-106.746493));
-        coordinates.add(new LatLng(32.279285,-106.746587));
-        coordinates.add(new LatLng(32.279355,-106.74667));
-        coordinates.add(new LatLng(32.279392,-106.746581));
-        coordinates.add(new LatLng(32.279385,-106.746506));
-        */
-
-        /* Small Field Next to CS Dept. */
-//        coordinates.add(new LatLng(32.280979,-106.752577));
-//        coordinates.add(new LatLng(32.280978,-106.752541));
-//        coordinates.add(new LatLng(32.280869,-106.752542));
-//        coordinates.add(new LatLng(32.280859,-106.752587));
-//        coordinates.add(new LatLng(32.280876,-106.752635));
-//        coordinates.add(new LatLng(32.280916,-106.752668));
-//        coordinates.add(new LatLng(32.28095,-106.752659));
-//        coordinates.add(new LatLng(32.280971,-106.75262));
-
-        ArrayList< ArrayList<LatLng> > flightPlans = coordAuction.auctionPoints ( drones , normCoordinates );
-
+        // Send Flight Plan to each drone.
         for ( int i = 0 ; i < drones.size ( ) ; ++ i ) {
             drones.get(i).buildFlightPlan(flightPlans.get(i));
         }
     }
 
-    // All flight plans are now set and ready to start
+    /**
+     * Use when drones have intialized a flightplan and are ready to take-off.
+     */
     public void startFlightPlan ( ) {
         for ( int i = 0 ; i < drones.size ( ) ; ++ i ) {
             drones.get(i).startFlightPlan();
@@ -664,97 +674,4 @@ public class MapScreen extends FragmentActivity implements
 
      }
 
-    private void distanceBetweenPointsShape()
-    {
-        for ( int i = 0; i < coordinates.size() - 1; ++i )
-        {
-            int v2 = i + 1;
-            Log.d("ED ("+ i + "," + v2 + "): ", "" + distanceBetweenPoints(coordinates.get(i), coordinates.get(i + 1)));
-        }
-        Log.d("ED ("+ coordinates.size() + "," + 0 + "): ", "" + distanceBetweenPoints(coordinates.get(coordinates.size() - 1), coordinates.get(0)));
-    }
-
-    private void distanceBetweenPointsLine()
-    {
-        for ( int i = 0; i < coordinates.size() - 1; ++i )
-        {
-            int v2 = i + 1;
-            Log.d("ED ("+ i + "," + v2 + "): ", "" + distanceBetweenPoints(coordinates.get(i), coordinates.get(i + 1)));
-        }
-    }
-
-    private double distanceBetweenPoints( LatLng p1, LatLng p2 )
-    {
-        return Math.sqrt(Math.pow((p2.latitude - p1.latitude), 2) + Math.pow((p2.longitude - p1.longitude), 2));
-    }
-
-    private void normalizeShape()
-    {
-        normShapeOpts.add( coordinates.get( 0 ) );
-        ArrayList<LatLng> temp = new ArrayList<LatLng>();
-        temp.add( coordinates.get( 0 ) );
-        normCoordinates.add( coordinates.get( 0 ) );
-        boolean addPoint;
-        for ( int i = 1; i < coordinates.size() - 1; ++i )
-        {
-            addPoint = true;
-            for ( int j = 0; j < temp.size(); ++j )
-            {
-                if ( distanceBetweenPoints(coordinates.get(i), temp.get(j)) < leastViableDistance )
-                {
-                    addPoint = false;
-                }
-            }
-            if ( addPoint == true )
-            {
-                temp.add( coordinates.get( i ) );
-                normCoordinates.add( coordinates.get( i ) );
-            }
-        }
-        for ( int i = 0; i < temp.size(); ++i )
-        {
-            normShapeOpts.add( temp.get( i ) );
-        }
-        normShapeOpts
-                .strokeWidth(2)
-                .strokeColor(Color.BLUE)
-                .visible(true)
-                .zIndex(1001);
-        normShape = map.addPolygon( normShapeOpts );
-    }
-
-    private void normalizeLine()
-    {
-        normLineOpts.add( coordinates.get( 0 ) );
-        ArrayList<LatLng> temp = new ArrayList<LatLng>();
-        temp.add( coordinates.get( 0 ) );
-        normCoordinates.add( coordinates.get( 0 ) );
-        boolean addPoint;
-        for ( int i = 1; i < coordinates.size() - 1; ++i )
-        {
-            addPoint = true;
-            for ( int j = 0; j < temp.size(); ++j )
-            {
-                if ( distanceBetweenPoints(coordinates.get(i), temp.get(j)) < leastViableDistance )
-                {
-                    addPoint = false;
-                }
-            }
-            if ( addPoint == true )
-            {
-                temp.add( coordinates.get( i ) );
-                normCoordinates.add( coordinates.get( i ) );
-            }
-        }
-        for ( int i = 0; i < temp.size(); ++i )
-        {
-            normLineOpts.add( temp.get( i ) );
-        }
-        normLineOpts
-                .width(2)
-                .color(Color.BLUE)
-                .visible(true)
-                .zIndex(1001);
-        normLine = map.addPolyline( normLineOpts );
-    }
 }
