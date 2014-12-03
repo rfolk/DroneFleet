@@ -1,0 +1,121 @@
+Setup Instruction:
+
+Setting up a drone for environment:
+Assumption is drones are brand-new:
+1. Download source from: https://sites.google.com/site/androflight/open-source
+2. Extract source
+3. cd sourceFile/src/data/ (Keep this directory open during the rest of these instructions)
+4. Open install.sh (Change to the following)
+-- ESSID=AndroidAP
+-- IP=192.168.43.10
+-- NETMASK=255.255.255.0
+5. Save install.sh
+6. Turn on Drone
+7. Connect to Drone Access Point with a wireless-capable computer.
+=== > denotes a command in a terminal or telnet capable program. ===
+> telnet 192.168.1.1    (No password required)
+> vi install.sh
+Copy and paste the install.sh on our local machine to vi
+> vi ARAutoConnect.sh
+Copy and paste the ARAutoConnect.sh on our local machine to vi
+> vi uninstall.sh
+Copy and paste the uninstall.sh
+> chmod 0755 install.sh
+> chmod 0755 ARAut	oConnect.sh
+> chmod 0755 uninstall.sh
+> ./install.sh
+> vi /data/config.ini
+Set “wifi_mode = 2”
+> reboot (Disconnection should occur and will then join ESSID once finished)
+
+Simulator Installation:
+All of these steps are done within a Ubuntu virtual machine.
+Virtualization software used is VMware Fusion 6 for Mac.
+
+Build Instruction for Ubuntu 13.10 (Saucy)
+Compatible with ROS Indigo 
+Compatible with Gazibo 2.2 
+Compatible with tum_simulator ( AR.Drone 2 simulation project )
+
+ROS Indigo Installation:
+sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu saucy main" > /etc/apt/sources.list.d/ros-latest.list'
+wget https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -O - | sudo apt-key add -
+sudo apt-get update
+sudo apt-get install ros-indigo-desktop-full
+sudo reboot
+(Fix black-screen with intended steps below)
+apt-cache search ros-indigo
+sudo rosdep init
+rosdep update
+ echo "source /opt/ros/indigo/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+source /opt/ros/indigo/setup.bash
+sudo apt-get install python-rosinstall
+Gazebo 2.2 Installation:
+sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu saucy main" > /etc/apt/sources.list.d/gazebo-latest.list'
+wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
+sudo apt-get update
+sudo apt-get install gazebo2
+echo '/usr/local/lib' | sudo tee /etc/ld.so.conf.d/gazebo.conf 
+sudo ldconfig
+
+ROS Indigo / Gazebo 2.2 Integration Package:
+sudo apt-get install ros-indigo-gazebo-ros-pkgs ros-indigo-gazebo-ros-control
+tum_simulator ( for ROS Indigo ):
+mkdir -p ~/tum_simulator_ws/src
+cd  ~/tum_simulator_ws/src
+catkin_init_workspace
+git clone https://github.com/AutonomyLab/ardrone_autonomy.git
+git clone https://github.com/occomco/tum_simulator.git
+cd ..
+rosdep install --from-paths src --ignore-src --rosdistro indigo -y
+catkin_make
+source devel/setup.bash (needs to be appended to ~/.bashrc
+roslaunch cvg_sim_gazebo ardrone_testworld.launch
+Black-screen fix: 
+(Ref:http://askubuntu.com/questions/389901/how-do-i-get-opengl-working-on-an-nvidia-geforce-gt-750m)
+sudo apt-get purge nvidia*
+sudo apt-get install --reinstall xserver-xorg-video-intel  libgl1-mesa-glx libgl1-mesa-dri xserver-xorg-core
+sudo dpkg-reconfigure xserver-xorg
+sudo update-alternatives --remove gl_conf /usr/lib/nvidia-current/ld.so.conf
+sudo reboot
+sudo apt-add-repository ppa:xorg-edgers/ppa
+This provides the necessary repository (assuming you removed it)
+sudo apt-get update
+sudo apt-get install bumblebee-nvidia nvidia-319 nvidia-settings-319
+sudo reboot (Will take a little longer to reboot).
+
+References for Project Instructions:
+
+API Resource:
+https://projects.ardrone.org/attachments/download/365/ARDrone_SDK_1_7_Developer_Guide.pdf
+https://abstract.cs.washington.edu/~shwetak/classes/ee472/assignments/lab4/drone_api.pdf
+http://svn.mikrokopter.de/mikrosvn/Projects/C-OSD/arducam-osd/libraries/GCS_MAVLink/incude/mavlink/v0.9/common/mavlink_msg_global_position_int.h
+https://projects.ardrone.org/boards/1/topics/show/5924
+
+API GPS:
+http://wiki.paparazziuav.org/wiki/AR_Drone_2/GPS
+https://github.com/felixge/node-ar-drone/issues/74
+https://github.com/felixge/node-ar-drone
+https://github.com/andrew/ar-drone-gps
+https://pixhawk.ethz.ch/mavlink/
+http://en.wikipedia.org/wiki/MAVLink
+http://qgroundcontrol.org/mavlink/start
+http://qgroundcontrol.org/mavlink/waypoint_protocol#write_mav_waypoint_list
+Scripts:
+http://jsfiddle.net/9cscm54o/3/ (Hex String to Java byte[])
+http://jsfiddle.net/yeuLzatt/ (Algorithm Results)
+http://itouchmap.com/latlong.html (Coordinate tool, used console in Chrome )
+
+Using “tum_simulator” for ROS :
+http://wiki.ros.org/tum_simulator (Original Project)
+https://github.com/occomco/tum_simulator (Ros/Gazebo: Indigo build)
+
+SDK for Drone 2.0:
+https://projects.ardrone.org/ 
+
+Basic Movements:
+http://www.robotappstore.com/Knowledge-Base/How-to-Control-ARDrone-Movements-During-Flight/99.html
+https://projects.ardrone.org/boards/1/topics/show/852
+https://projects.ardrone.org/boards/1/topics/show/3665
+
