@@ -35,16 +35,14 @@ Set “wifi_mode = 1”
 > reboot (Disconnection should occur and will then join ESSID once finished)
 ```
 
-# Simulator Installation:
+# Simulator Installation(Ubuntu 13.10 ~ Saucy):
 
-All of these steps are done within a Ubuntu virtual machine.
-Virtualization software used is VMware Fusion 6 for Mac.
+> All of these steps are done within a Ubuntu virtual machine.
+> Virtualization software used is VMware Fusion 6 for Mac.
 
-## Build Instruction for Ubuntu 13.10 (Saucy)
-
-Compatible with ROS Indigo 
-Compatible with Gazibo 2.2 
-Compatible with tum_simulator ( AR.Drone 2 simulation project )
+1. Compatible with ROS Indigo   
+2. Compatible with Gazibo 2.2   
+3. Compatible with tum_simulator ( AR.Drone 2 simulation project )  
 
 ## ROS Indigo Installation:
 
